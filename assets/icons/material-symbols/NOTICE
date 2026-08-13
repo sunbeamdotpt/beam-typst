@@ -1,0 +1,8 @@
+The SVG icons in this directory are from Google's Material Symbols / Material
+Icons library, Copyright Google LLC, licensed under the Apache License,
+Version 2.0 (see the LICENSE file in this directory).
+
+Source: https://github.com/google/material-design-icons
+
+Modifications: `lightbulb.svg` and `arrow_forward.svg` have been recolored
+(fill changed to Sunbeam brand orange #fa520f). No other changes were made.

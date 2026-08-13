@@ -1,7 +1,7 @@
 # beam-ui-typst
 
 
-Typst document templates for the [Beam Design Language](https://design.sunbeam.pt). Provides four show-rule templates — `beam-doc`, `beam-newsletter`, `beam-announcement`, and `beam-packet` — plus a shared component library.
+Typst document templates for the [Beam Design Language](https://design.sunbeam.pt). Provides five show-rule templates — `beam-doc`, `beam-newsletter`, `beam-announcement`, `beam-packet`, and `beam-legal` — plus a shared component library.
 
 **Fonts:** Ysabeau Infant · Monaspace Argon · Material Symbols Outlined
 
@@ -118,6 +118,30 @@ Body text here.
 #packet-callout(label: "Key insight")[
   A left-bordered callout that sits inside the text flow.
 ]
+```
+
+### `beam-legal`
+
+Light mirror of `beam-packet` for contracts and agreements that go out for signature — white page, same layout and typography scale. Every `packet-*` component has a `legal-*` equivalent (`legal-cover`, `legal-section`, `legal-callout`, `legal-table`, …). Differences: no orbital corner graphic, and gold labels shift to a darker warm tone for contrast on white. Adds two signing helpers: `legal-sig-line` and `legal-signatures`.
+
+```typst
+#show: beam-legal.with(
+  title: "Confidentiality Agreement",
+  author: "Sunbeam Studios, Lda.",
+)
+
+#legal-cover(
+  "Confidentiality Agreement",
+  subtitle: "For Friends, Family, and Interested Parties · Setúbal, Portugal",
+  label: "Sunbeam Studios, Lda.",
+)
+
+= 1. What Is Confidential
+
+Body text here.
+
+// Two-party signature block (unbreakable, two columns).
+#legal-signatures("Sunbeam Studios, Lda.", "Recipient")
 ```
 
 ---

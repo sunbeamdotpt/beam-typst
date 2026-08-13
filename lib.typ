@@ -1620,6 +1620,11 @@
 #let packet-card-fill = colors-card-dark
 #let packet-card-fill-alt = rgb("#272727")
 #let packet-table-row = rgb("#262626")
+// Translucent gold table rules — measured against the reference deck so they
+// render as the same warm dark tones over both the page background and the
+// zebra bands.
+#let packet-table-rule = 0.75pt + rgb(255, 161, 16, 19)
+#let packet-table-header-rule = 1pt + rgb(255, 184, 62, 43)
 #let packet-card-border = rgb(255, 175, 48, 46)
 #let packet-text = white
 #let packet-text-bright = rgb("#ebebeb")
@@ -1863,12 +1868,12 @@
     }
   }
 
-  // Translucent gold rules — measured against the reference deck so they
-  // render as the same warm dark tones over both the page background and
-  // the zebra bands. Insets match the deck's absolute padding (9pt text
-  // sits in ~34pt rows, ~14pt from the table edge).
-  let row-rule = 0.75pt + rgb(255, 161, 16, 19)
-  let header-rule = 1pt + rgb(255, 184, 62, 43)
+  // Rule strokes are shared tokens (packet-table-rule/-header-rule) so the
+  // component matches the beam-packet default table style. Insets match the
+  // deck's absolute padding (9pt text sits in ~34pt rows, ~14pt from the
+  // table edge).
+  let row-rule = packet-table-rule
+  let header-rule = packet-table-header-rule
 
   table(
     columns: columns,
@@ -2140,11 +2145,13 @@
 }
 
 /// Packet show-rule. Sets up dark A4 pages, section heading styles, lists,
-/// links, and a running footer.
+/// links, and a running footer. `classification` (e.g. "Confidential")
+/// replaces the title in the footer for restricted-distribution documents.
 #let beam-packet(
   title: "Packet",
   author: none,
   date: none,
+  classification: none,
   doc,
 ) = {
   set document(title: title, author: if author != none { author } else { () })
@@ -2157,8 +2164,6 @@
       if counter(page).get().first() > 1 {
         set text(size: packet-size-xs, fill: packet-text-muted, weight: weight-button, tracking: 0.08em)
         upper(title)
-        v(packet-space-sm)
-        line(length: 100%, stroke: 0.5pt + packet-card-border)
       }
     },
     footer: context {
@@ -2166,7 +2171,15 @@
       grid(
         columns: (1fr, auto),
         align: (left, right),
-        upper("Sunbeam Studios · " + title),
+        {
+          upper("Sunbeam Studios")
+          [ · ]
+          if classification != none {
+            text(fill: packet-orange, upper(classification))
+          } else {
+            upper(title)
+          }
+        },
         counter(page).display("1"),
       )
     },
@@ -2224,7 +2237,687 @@
   show enum: set block(spacing: packet-space-sm)
   show enum.item: set block(spacing: packet-space-xs)
 
+  // Default tables use the reference-deck recipe (same look as packet-table):
+  // zebra bands, a tracked-out gold caps header, translucent gold rules, no
+  // outer frame and no vertical rules. Ragged right + no hyphenation — narrow
+  // justified cells hyphenate badly ("En-voy").
+  set table(
+    stroke: (x, y) => (bottom: if y == 0 { packet-table-header-rule } else { packet-table-rule }),
+    inset: (x: 14pt, y: 14.5pt),
+    align: horizon,
+    fill: (_, row) => if calc.odd(row) { packet-table-row } else { none },
+  )
+  show table.cell: set text(size: packet-size-sm, hyphenate: false)
+  show table.cell.where(y: 0): it => {
+    set text(size: packet-size-xs, weight: weight-button, fill: packet-gold, tracking: 0.08em)
+    upper(it)
+  }
+  show table: set par(justify: false)
+
+  // Footnote separator (the divider above the references) in sunbeam orange.
+  set footnote.entry(separator: line(length: 30% + 0pt, stroke: 0.05em + packet-orange))
+
   set block(spacing: packet-space-lg)
+
+  doc
+}
+
+// ============================================================================
+// LEGAL TEMPLATE — beam-legal
+// ============================================================================
+// Light mirror of beam-packet for contracts, agreements, and anything that
+// goes out for signature. Same layout, components, and typography scale as
+// the packet — inverted onto a white page so it prints and e-signs cleanly.
+// Differences from beam-packet: no orbital corner graphic (print bleed), and
+// gold labels shift to a darker warm tone for contrast on white.
+// ============================================================================
+
+// ---- Legal Colors — light theme (packet tokens inverted) ----
+#let legal-bg = white
+#let legal-card-fill = colors-warm-ivory
+#let legal-card-fill-alt = colors-cream
+#let legal-table-row = colors-warm-ivory
+#let legal-card-border = colors-border-warm
+#let legal-text = colors-sunbeam-black
+#let legal-text-bright = colors-sunbeam-black
+#let legal-text-muted = text-muted
+#let legal-text-secondary = text-secondary
+#let legal-callout-text = text-secondary
+// packet-gold (#ffa110) fails contrast on white at label sizes — use the
+// warm brown from the semantic muted token instead.
+#let legal-gold = text-muted
+#let legal-orange = colors-sunbeam-orange
+
+// ---- Legal Typography / Spacing — same scale as the packet ----
+#let legal-size-xs = packet-size-xs
+#let legal-size-sm = packet-size-sm
+#let legal-size-base = packet-size-base
+#let legal-size-lg = packet-size-lg
+#let legal-size-xl = packet-size-xl
+#let legal-size-2xl = packet-size-2xl
+#let legal-size-3xl = packet-size-3xl
+
+#let legal-space-xs = packet-space-xs
+#let legal-space-sm = packet-space-sm
+#let legal-space-md = packet-space-md
+#let legal-space-lg = packet-space-lg
+#let legal-space-xl = packet-space-xl
+#let legal-space-2xl = packet-space-2xl
+
+#let legal-radius = packet-radius
+
+/// Small-caps section label, tracked. Used at the top of every section.
+#let legal-label(text-content) = {
+  text(
+    fill: legal-gold,
+    size: legal-size-xs,
+    weight: weight-button,
+    tracking: 0.14em,
+    upper(text-content),
+  )
+}
+
+/// Section opener: small label + document-scale headline + optional subhead.
+#let legal-section(label-text, headline, subhead: none) = {
+  block(above: legal-space-xl, below: legal-space-lg, {
+    legal-label(label-text)
+    v(legal-space-xs)
+    text(
+      font: font-heading,
+      size: legal-size-2xl,
+      weight: weight-display,
+      fill: legal-text,
+      headline,
+    )
+    if subhead != none {
+      v(legal-space-sm)
+      text(
+        size: legal-size-base,
+        weight: weight-body,
+        fill: legal-text-muted,
+        subhead,
+      )
+    }
+  })
+}
+
+/// Single card with optional title and body.
+#let legal-card(title: none, body: none, accent-border: false) = {
+  block(
+    width: 100%,
+    fill: legal-card-fill,
+    stroke: if accent-border { (left: 3pt + legal-orange) } else { 1pt + legal-card-border },
+    radius: legal-radius,
+    inset: legal-space-lg,
+    {
+      if title != none {
+        text(
+          font: font-heading,
+          size: legal-size-xl,
+          weight: weight-heading,
+          fill: legal-text,
+          title,
+        )
+        v(legal-space-sm)
+      }
+      text(
+        size: legal-size-base,
+        weight: weight-body,
+        fill: legal-text-secondary,
+        body,
+      )
+    },
+  )
+}
+
+/// Grid of cards. `columns` can be 2, 3, or 4.
+#let legal-card-grid(columns: 3, gutter: legal-space-md, ..cards) = {
+  let items = cards.pos()
+  let col-spec = (1fr,) * columns
+  grid(
+    columns: col-spec,
+    column-gutter: gutter,
+    row-gutter: gutter,
+    align: top,
+    ..items.map(it => legal-card(..it)),
+  )
+}
+
+/// Card callout with a thick left rule, lightbulb marker, and orange label.
+/// Same treatment as packet-callout — the icon's #fa520f fill reads fine on
+/// the ivory card.
+#let legal-callout(label: none, body) = {
+  block(
+    width: 100%,
+    fill: legal-card-fill,
+    stroke: (left: border-width-callout + legal-orange),
+    inset: legal-space-lg,
+    {
+      if label != none {
+        box(
+          baseline: 30%,
+          image("assets/icons/material-symbols/lightbulb.svg", width: legal-size-xl),
+        )
+        h(legal-space-sm)
+        text(
+          fill: legal-orange,
+          size: legal-size-xs,
+          weight: weight-button,
+          tracking: 0.14em,
+          upper(label),
+        )
+        v(legal-space-sm)
+      }
+      text(
+        size: legal-size-base,
+        weight: weight-body,
+        fill: legal-callout-text,
+        body,
+      )
+    },
+  )
+}
+
+/// Big-number metric card.
+#let legal-metric(value, label) = {
+  block(
+    width: 100%,
+    fill: legal-card-fill,
+    stroke: 1pt + legal-orange,
+    radius: legal-radius,
+    inset: legal-space-lg,
+    {
+      text(
+        font: font-heading,
+        size: legal-size-3xl,
+        weight: weight-display,
+        fill: legal-orange,
+        value,
+      )
+      v(legal-space-xs)
+      text(
+        size: legal-size-sm,
+        weight: weight-body,
+        fill: legal-text-secondary,
+        label,
+      )
+    },
+  )
+}
+
+/// Arrow list with the orange arrow bullet.
+#let legal-arrow-list(..items) = {
+  let entries = items.pos()
+  grid(
+    columns: (auto, 1fr),
+    column-gutter: legal-space-sm,
+    row-gutter: legal-space-md,
+    align: (top, top),
+    ..entries.map(entry => {
+      (text(fill: legal-orange, "→"), text(size: legal-size-base, fill: legal-text, entry))
+    }).flatten(),
+  )
+}
+
+/// Styled CLI block with orange prompts.
+#let legal-cli-block(..lines) = {
+  let entries = lines.pos()
+  block(
+    width: 100%,
+    fill: legal-card-fill,
+    stroke: 1pt + legal-card-border,
+    radius: legal-radius,
+    inset: legal-space-lg,
+    {
+      set text(font: font-mono, size: legal-size-sm)
+      for (i, line) in entries.enumerate() {
+        if i > 0 { v(legal-space-sm) }
+        if type(line) == str and line.starts-with("$") {
+          // Prompt line: "$ command" -> orange $, dark command
+          let parts = line.split(" ")
+          text(fill: legal-orange, parts.at(0))
+          h(3pt)
+          text(fill: legal-text-secondary, parts.slice(1).join(" "))
+        } else {
+          text(fill: legal-text-muted, line)
+        }
+      }
+    },
+  )
+}
+
+/// Comparison table with zebra rows, warm header, and optional highlight row.
+/// Same geometry as packet-table, restroked for a white page.
+#let legal-table(..args) = {
+  let columns = args.pos().at(0)
+  let rows = args.pos().slice(1)
+  let highlight-row = args.named().at("highlight", default: none)
+
+  let format-cell(cell, is-highlight: false) = {
+    if type(cell) == str and cell.starts-with("*") and cell.ends-with("*") {
+      let inner = cell.slice(1, -1)
+      text(size: legal-size-sm, weight: weight-button, fill: legal-text, hyphenate: false, inner)
+    } else if is-highlight {
+      text(size: legal-size-sm, weight: weight-button, fill: legal-orange, hyphenate: false, cell)
+    } else {
+      text(size: legal-size-sm, weight: weight-body, fill: legal-text, hyphenate: false, cell)
+    }
+  }
+
+  let row-rule = 0.75pt + legal-card-border
+  let header-rule = 1pt + legal-gold
+
+  table(
+    columns: columns,
+    stroke: none,
+    inset: (x: 14pt, y: 14.5pt),
+    align: horizon,
+    fill: (_, row) => if calc.odd(row) { legal-table-row } else { none },
+    table.header(
+      ..rows.at(0).map(cell => {
+        text(
+          size: legal-size-xs,
+          weight: weight-button,
+          fill: legal-gold,
+          tracking: 0.08em,
+          upper(cell),
+        )
+      }),
+    ),
+    table.hline(stroke: header-rule),
+    ..rows.slice(1).enumerate().map(((i, row)) => {
+      let is-highlight = highlight-row != none and i == highlight-row
+      let bottom-stroke = if is-highlight { 1.5pt + legal-orange } else { row-rule }
+      let cells = row.enumerate().map(((j, cell)) => table.cell(
+        stroke: (bottom: bottom-stroke),
+        format-cell(cell, is-highlight: is-highlight),
+      ))
+      cells
+    }).flatten(),
+  )
+}
+
+/// Milestone list with badges (M1, M2, …).
+#let legal-milestones(..items) = {
+  let entries = items.pos()
+  grid(
+    columns: (auto, 1fr),
+    column-gutter: legal-space-md,
+    row-gutter: legal-space-md,
+    align: (center + horizon, top),
+    ..entries.enumerate().map(((i, body)) => {
+      (
+        box(
+          fill: legal-card-fill,
+          stroke: 1pt + legal-card-border,
+          radius: radius-sm,
+          inset: (x: legal-space-md, y: legal-space-xs),
+          text(size: legal-size-xs, weight: weight-button, fill: legal-text, "M" + str(i + 1)),
+        ),
+        text(size: legal-size-base, fill: legal-text-secondary, body),
+      )
+    }).flatten(),
+  )
+}
+
+/// Three-tier pricing cards. The center tier is highlighted in orange.
+#let legal-pricing-tiers(tiers) = {
+  // tiers: array of (name, price, subtitle, body)
+  grid(
+    columns: (1fr, 1fr, 1fr),
+    column-gutter: legal-space-md,
+    align: top,
+    ..tiers.enumerate().map(((i, tier)) => {
+      let is-highlight = i == 1
+      block(
+        width: 100%,
+        fill: if is-highlight { legal-orange } else { legal-card-fill },
+        stroke: if is-highlight { none } else { 1pt + legal-card-border },
+        radius: legal-radius,
+        inset: legal-space-lg,
+        {
+          text(
+            font: font-heading,
+            size: legal-size-lg,
+            weight: weight-heading,
+            fill: if is-highlight { white } else { legal-text },
+            tier.at(0),
+          )
+          v(legal-space-sm)
+          text(
+            font: font-heading,
+            size: legal-size-2xl,
+            weight: weight-display,
+            fill: if is-highlight { white } else { legal-orange },
+            tier.at(1),
+          )
+          if tier.at(2) != none {
+            v(legal-space-xs)
+            text(
+              size: legal-size-sm,
+              style: "italic",
+              fill: if is-highlight { rgb(255, 255, 255, 200) } else { legal-text-muted },
+              tier.at(2),
+            )
+          }
+          v(legal-space-md)
+          line(length: 100%, stroke: if is-highlight { rgb(255, 255, 255, 150) } else { legal-card-border })
+          v(legal-space-md)
+          text(
+            size: legal-size-base,
+            fill: if is-highlight { white } else { legal-text-muted },
+            tier.at(3),
+          )
+        },
+      )
+    }),
+  )
+}
+
+/// Team card with circular avatars + names + orange roles + bios.
+#let legal-team-card(..members) = {
+  let people = members.pos()
+  block(
+    width: 100%,
+    fill: legal-card-fill,
+    stroke: 1pt + legal-card-border,
+    radius: legal-radius,
+    inset: legal-space-xl,
+    {
+      grid(
+        columns: people.map(_ => 1fr),
+        column-gutter: legal-space-xl,
+        align: top,
+        ..people.map(m => {
+          block(width: 100%, {
+            if m.avatar != none {
+              align(center, if type(m.avatar) == str {
+                avatar(m.avatar, size: 64pt)
+              } else {
+                m.avatar
+              })
+              v(legal-space-md)
+            }
+            text(
+              font: font-heading,
+              size: legal-size-xl,
+              weight: weight-heading,
+              fill: legal-text,
+              m.name,
+            )
+            v(legal-space-xs)
+            text(
+              size: legal-size-sm,
+              weight: weight-button,
+              fill: legal-orange,
+              m.role,
+            )
+            if m.body != [] and m.body != none {
+              v(legal-space-sm)
+              text(
+                size: legal-size-sm,
+                fill: legal-text-muted,
+                m.body,
+              )
+            }
+          })
+        }),
+      )
+    },
+  )
+}
+
+/// Letterhead block for the first page: small label, title, optional italic
+/// subtitle, body, and date. No orbital corner graphic — legal documents
+/// print, and the bleed mark is a screen flourish.
+#let legal-cover(
+  title,
+  subtitle: none,
+  body: none,
+  label: "Legal",
+  date: none,
+) = {
+  block(
+    width: 100%,
+    below: legal-space-2xl,
+    {
+      // Cover rhythm runs tight so the letterhead reads as one unit.
+      // par.spacing must be zeroed too — it stacks with block spacing and
+      // would otherwise dominate the gaps at these font sizes.
+      set block(spacing: 0pt)
+      set par(spacing: 0pt)
+      if label != none {
+        legal-label(label)
+        v(18pt)
+      }
+      text(
+        font: font-heading,
+        size: legal-size-3xl,
+        weight: weight-display,
+        fill: legal-text,
+        title,
+      )
+      if subtitle != none {
+        v(18pt)
+        text(
+          font: font-heading,
+          size: legal-size-xl,
+          style: "italic",
+          fill: legal-orange,
+          subtitle,
+        )
+      }
+      if body != none {
+        v(15pt)
+        block(
+          width: 12.5cm,
+          text(
+            size: legal-size-base,
+            weight: weight-body,
+            fill: legal-text-bright,
+            body,
+          ),
+        )
+      }
+      if date != none {
+        v(12pt)
+        text(
+          size: legal-size-sm,
+          fill: legal-text-muted,
+          date,
+        )
+      }
+    },
+  )
+}
+
+/// Ruled signature line with a small-caps caption beneath ("Name", "Date", …).
+/// The rule is what gets signed; the caption sits below it.
+#let legal-sig-line(caption, spacing: legal-space-xl) = {
+  v(spacing)
+  line(length: 100%, stroke: 0.75pt + legal-text-muted)
+  v(legal-space-xs)
+  text(
+    size: legal-size-xs,
+    weight: weight-button,
+    fill: legal-text-muted,
+    tracking: 0.08em,
+    upper(caption),
+  )
+}
+
+/// Two-party signature block. Each party gets a prominent header — name in
+/// bold caps, an optional italic role line ("Disclosing party"), and a dark
+/// divider rule — followed by its stack of `legal-sig-line` fields. The
+/// header treatment makes it unambiguous which column each party signs.
+/// Kept unbreakable so a signature column never splits across a page.
+#let legal-signatures(
+  left-label,
+  right-label,
+  left-role: none,
+  right-role: none,
+  left-fields: ("By", "Name", "Date"),
+  right-fields: ("Signature", "Name", "Date"),
+) = {
+  let party-column(label, role, fields) = block({
+    // Zero the document-wide block spacing so the gaps here are exactly the
+    // v() values below — otherwise header, role, and rule drift ~18pt apart.
+    set block(spacing: 0pt)
+    text(
+      size: legal-size-lg,
+      weight: weight-button,
+      fill: legal-text,
+      tracking: 0.06em,
+      upper(label),
+    )
+    if role != none {
+      v(2pt)
+      text(size: legal-size-sm, style: "italic", fill: legal-text-muted, role)
+    }
+    v(legal-space-sm)
+    line(length: 100%, stroke: 1pt + legal-text)
+    for f in fields { legal-sig-line(f) }
+  })
+
+  block(breakable: false, {
+    v(legal-space-lg)
+    grid(
+      columns: (1fr, 1fr),
+      column-gutter: legal-space-2xl,
+      party-column(left-label, left-role, left-fields),
+      party-column(right-label, right-role, right-fields),
+    )
+  })
+}
+
+/// Closing page for a legal packet — plain white, no corner graphic.
+#let legal-closing(
+  headline,
+  body: none,
+  contact: none,
+  label: "Closing",
+) = {
+  page(margin: 0pt, {
+    place(rect(fill: legal-bg, width: 100%, height: 100%))
+    place(
+      top + left,
+      dx: 2.4cm,
+      dy: 2.4cm,
+      block(width: 14cm, {
+        legal-label(label)
+        v(legal-space-lg)
+        text(
+          font: font-heading,
+          size: legal-size-3xl,
+          weight: weight-display,
+          fill: legal-text,
+          headline,
+        )
+        if body != none {
+          v(legal-space-xl)
+          text(
+            size: legal-size-lg,
+            weight: weight-body,
+            fill: legal-text-muted,
+            body,
+          )
+        }
+        if contact != none {
+          v(legal-space-2xl)
+          text(
+            size: legal-size-base,
+            fill: legal-orange,
+            contact,
+          )
+        }
+      }),
+    )
+  })
+}
+
+/// Legal show-rule. Light A4 pages with the packet's heading hierarchy,
+/// running header/footer, and list styles. Body text is full-strength dark —
+/// contracts need maximum legibility.
+#let beam-legal(
+  title: "Agreement",
+  author: none,
+  date: none,
+  doc,
+) = {
+  set document(title: title, author: if author != none { author } else { () })
+
+  set page(
+    paper: "a4",
+    margin: (top: 2.6cm, bottom: 2.4cm, left: 2.4cm, right: 2.4cm),
+    background: rect(fill: legal-bg, width: 100%, height: 100%),
+    header: context {
+      if counter(page).get().first() > 1 {
+        set text(size: legal-size-xs, fill: legal-text-muted, weight: weight-button, tracking: 0.08em)
+        upper(title)
+      }
+    },
+    footer: context {
+      set text(size: legal-size-xs, fill: legal-text-muted, weight: weight-button, tracking: 0.08em)
+      grid(
+        columns: (1fr, auto),
+        align: (left, right),
+        upper("Sunbeam Studios"),
+        counter(page).display("1"),
+      )
+    },
+  )
+
+  set text(
+    font: font-body,
+    size: legal-size-base,
+    weight: weight-body,
+    fill: legal-text,
+  )
+  set par(leading: 0.55em, justify: true)
+  set heading(numbering: none)
+
+  // h1 = section headline inside content pages
+  show heading.where(level: 1): it => {
+    block(above: legal-space-xl, below: legal-space-md, {
+      text(
+        font: font-heading,
+        size: legal-size-2xl,
+        weight: weight-display,
+        fill: legal-text,
+        it.body,
+      )
+    })
+  }
+
+  // h2 = sub-section title
+  show heading.where(level: 2): it => {
+    block(above: legal-space-lg, below: legal-space-sm, {
+      text(
+        font: font-heading,
+        size: legal-size-xl,
+        weight: weight-heading,
+        fill: legal-text,
+        it.body,
+      )
+    })
+  }
+
+  // h3 = small caps label
+  show heading.where(level: 3): it => {
+    block(above: legal-space-md, below: legal-space-xs, {
+      legal-label(it.body)
+    })
+  }
+
+  show link: it => text(fill: legal-orange, it)
+  set list(marker: ([•], [◦], [▪]))
+  show list: set text(fill: legal-text-secondary)
+  show list: set block(spacing: legal-space-sm)
+  show list.item: set block(spacing: legal-space-xs)
+  show enum: set block(spacing: legal-space-sm)
+  show enum.item: set block(spacing: legal-space-xs)
+
+  set block(spacing: legal-space-lg)
 
   doc
 }
