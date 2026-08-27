@@ -1,3 +1,7 @@
+---
+title: Beam UI Typst
+---
+
 # beam-ui-typst
 
 
